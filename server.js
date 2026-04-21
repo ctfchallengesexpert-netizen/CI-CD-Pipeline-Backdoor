@@ -51,13 +51,28 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-// Stage 1: Hidden endpoint - IDOR vulnerability
-// Accessible without proper authentication
+// Stage 1: Hidden endpoint with rate limiting and puzzle
 app.get('/api/build/logs', (req, res) => {
   const buildId = req.query.id || '1001';
+  const session = sessions.get(req.sessionId);
   
-  // Intentional IDOR - no auth check
-  // Multiple build IDs, only one has the payload
+  // Rate limiting
+  if (!session.lastRequest) {
+    session.lastRequest = Date.now();
+    session.requestCount = 0;
+  }
+  
+  const timeSinceLastRequest = Date.now() - session.lastRequest;
+  if (timeSinceLastRequest < 2000) { // 2 second delay between requests
+    return res.status(429).json({ 
+      error: 'Too many requests',
+      retry_after: Math.ceil((2000 - timeSinceLastRequest) / 1000)
+    });
+  }
+  
+  session.lastRequest = Date.now();
+  session.requestCount++;
+  
   const logs = {
     '1001': {
       buildId: '1001',
@@ -93,37 +108,82 @@ app.get('/api/build/logs', (req, res) => {
   }
 });
 
-// Hidden endpoint - requires specific header
-app.get('/api/internal/artifacts', (req, res) => {
-  const authToken = req.headers['x-internal-token'];
+// Puzzle endpoint - must solve math puzzle to get hint
+app.get('/api/puzzle', (req, res) => {
+  const answer = req.query.answer;
+  const session = sessions.get(req.sessionId);
   
-  // Weak check - token is base64 encoded "internal:access"
-  if (authToken === Buffer.from('internal:access').toString('base64')) {
-    res.json({
-      builds: ['1001', '1002', '1003', '1004', '1337'],
-      note: 'Build 1337 has artifacts'
-    });
-  } else {
-    res.status(403).json({ error: 'Forbidden' });
+  if (!session.puzzle) {
+    // Generate random math puzzle
+    const a = Math.floor(Math.random() * 50) + 10;
+    const b = Math.floor(Math.random() * 50) + 10;
+    const c = Math.floor(Math.random() * 20) + 5;
+    session.puzzle = {
+      question: `(${a} * ${b}) + ${c}`,
+      answer: (a * b) + c
+    };
   }
+  
+  if (answer) {
+    if (parseInt(answer) === session.puzzle.answer) {
+      delete session.puzzle;
+      return res.json({
+        success: true,
+        hint: 'Build IDs are not always sequential. Try numbers with special meaning in hacker culture.',
+        next_step: 'Use /api/artifacts/:buildId with proper authentication'
+      });
+    } else {
+      return res.json({
+        success: false,
+        message: 'Wrong answer. Try again.'
+      });
+    }
+  }
+  
+  res.json({
+    puzzle: session.puzzle.question,
+    instruction: 'Solve this to get a hint. Send answer as ?answer=YOUR_ANSWER'
+  });
 });
 
-// Artifact endpoint - requires solving a challenge
+// Artifact endpoint - requires multiple steps
 app.get('/api/artifacts/:buildId', (req, res) => {
   const buildId = req.params.buildId;
-  const challenge = req.query.challenge;
+  const token = req.query.token;
+  const session = sessions.get(req.sessionId);
   
-  // Must solve: SHA256(buildId + "secret") first 8 chars
-  const crypto = require('crypto');
-  const expected = crypto.createHash('sha256').update(buildId + 'secret').digest('hex').slice(0, 8);
-  
-  if (challenge !== expected) {
-    return res.status(401).json({ 
-      error: 'Challenge required',
-      hint: 'SHA256(buildId + "secret") first 8 chars'
+  // Step 1: Must have solved puzzle first
+  if (!session.puzzleSolved && !session.puzzle) {
+    return res.status(403).json({
+      error: 'Access denied',
+      hint: 'Visit /api/puzzle first'
     });
   }
   
+  // Step 2: Generate time-based token
+  const crypto = require('crypto');
+  const timestamp = Math.floor(Date.now() / 60000); // Changes every minute
+  const expectedToken = crypto.createHash('md5')
+    .update(buildId + timestamp.toString() + 'secret_salt')
+    .digest('hex')
+    .slice(0, 16);
+  
+  if (!token) {
+    return res.status(401).json({
+      error: 'Token required',
+      hint: 'Generate token: MD5(buildId + current_minute_timestamp + "secret_salt") first 16 chars',
+      example: 'Current timestamp (minutes since epoch): ' + timestamp
+    });
+  }
+  
+  if (token !== expectedToken) {
+    return res.status(401).json({
+      error: 'Invalid token',
+      hint: 'Token changes every minute. Make sure your timestamp is correct.'
+    });
+  }
+  
+  // Step 3: Return artifact only for build 1337
   if (buildId === '1337') {
     res.json({
       buildId: '1337',

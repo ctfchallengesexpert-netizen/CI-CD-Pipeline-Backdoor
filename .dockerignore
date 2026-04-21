@@ -1,0 +1,13 @@
+node_modules/
+npm-debug.log
+.git
+.gitignore
+*.md
+!README.md
+!QUICKSTART.md
+solution/
+artifacts/*.pcap
+artifacts/*.zip
+artifacts/*.png
+.DS_Store
+*.log

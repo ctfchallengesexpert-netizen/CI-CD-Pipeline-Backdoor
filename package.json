@@ -1,0 +1,24 @@
+{
+  "name": "cicd-backdoor-challenge",
+  "version": "1.0.0",
+  "description": "Expert-level CTF challenge - CI/CD Pipeline Backdoor",
+  "main": "server.js",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "generate": "node scripts/generate-artifacts.js",
+    "setup": "npm install && npm run generate",
+    "build": "npm run generate"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "jimp": "^0.22.10",
+    "archiver": "^6.0.1"
+  }
+}

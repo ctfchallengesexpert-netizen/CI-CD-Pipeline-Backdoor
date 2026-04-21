@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevOps Dashboard - Login</title>
+    <title>CI/CD Pipeline Security Audit</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@400;600;700&display=swap');
+        
         * {
             margin: 0;
             padding: 0;
@@ -12,32 +14,95 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            background: #0a0e27;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 107, 107, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(72, 219, 251, 0.2) 0%, transparent 50%);
+            animation: gradient 15s ease infinite;
+        }
+        
+        @keyframes gradient {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-50px, 50px) rotate(180deg); }
         }
         
         .container {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            width: 400px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 
+                0 0 60px rgba(120, 119, 198, 0.3),
+                0 0 100px rgba(255, 107, 107, 0.2),
+                inset 0 0 80px rgba(255, 255, 255, 0.03);
+            width: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .ctf-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
         
         h1 {
-            color: #333;
+            color: #fff;
             margin-bottom: 10px;
-            font-size: 28px;
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
         .subtitle {
-            color: #666;
+            color: #94a3b8;
             margin-bottom: 30px;
             font-size: 14px;
+            font-family: 'Fira Code', monospace;
+        }
+        
+        .mission-brief {
+            background: rgba(120, 119, 198, 0.1);
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            color: #cbd5e1;
+            font-size: 13px;
+            line-height: 1.6;
         }
         
         .form-group {
@@ -46,106 +111,170 @@
         
         label {
             display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         input {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 5px;
+            padding: 14px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
             font-size: 14px;
-            transition: border-color 0.3s;
+            color: #fff;
+            font-family: 'Fira Code', monospace;
+            transition: all 0.3s;
         }
         
         input:focus {
             outline: none;
             border-color: #667eea;
+            background: rgba(30, 41, 59, 1);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        input::placeholder {
+            color: #64748b;
         }
         
         button {
             width: 100%;
-            padding: 12px;
+            padding: 16px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        button:hover::before {
+            left: 100%;
         }
         
         button:hover {
             transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
         }
         
         .message {
             margin-top: 20px;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 15px;
+            border-radius: 8px;
             display: none;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
         }
         
         .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
         }
         
         .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
         
         .footer {
             margin-top: 30px;
             text-align: center;
-            color: #999;
-            font-size: 12px;
+            color: #64748b;
+            font-size: 11px;
+            font-family: 'Fira Code', monospace;
         }
         
         .hint {
             margin-top: 20px;
-            padding: 10px;
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
+            padding: 15px;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 8px;
             font-size: 12px;
-            color: #856404;
+            color: #fbbf24;
+            font-family: 'Fira Code', monospace;
+        }
+        
+        .hint::before {
+            content: '💡 ';
+        }
+        
+        .terminal-line {
+            color: #48dbfb;
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+        
+        .blink {
+            animation: blink 1s step-end infinite;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔧 DevOps Dashboard</h1>
-        <p class="subtitle">CI/CD Pipeline Management System v2.1.4</p>
+        <div class="ctf-badge">🚩 CTF Challenge</div>
+        <h1>🔐 Security Audit</h1>
+        <p class="subtitle">CI/CD Pipeline Investigation v2.1.4</p>
+        
+        <div class="mission-brief">
+            <strong>MISSION BRIEF:</strong> A disgruntled developer recently left the organization. Intelligence suggests they may have planted a backdoor in the CI/CD pipeline. Your task: investigate the system and find evidence of compromise.
+        </div>
         
         <form id="loginForm">
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
+                <label for="username">Access ID</label>
+                <input type="text" id="username" name="username" placeholder="Enter access ID" required>
             </div>
             
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <label for="password">Security Key</label>
+                <input type="password" id="password" name="password" placeholder="Enter security key" required>
             </div>
             
-            <button type="submit">Login</button>
+            <button type="submit">🔓 Authenticate</button>
         </form>
         
         <div id="message" class="message"></div>
         
         <div class="hint">
-            💡 Default credentials available in documentation
+            Hint: Check the documentation for default credentials
+        </div>
+        
+        <div class="terminal-line">
+            <span style="color: #4ade80;">root@audit-system</span>:<span style="color: #60a5fa;">~</span>$ <span class="blink">_</span>
         </div>
         
         <div class="footer">
-            © 2026 SecureDevOps Inc. | Build #1337
+            SecureDevOps Inc. | Build #1337 | Status: INVESTIGATING
             <!-- TODO: Remove debug endpoints before production -->
         </div>
     </div>

@@ -37,10 +37,16 @@ echo "Starting build process..."
 export BUILD_ENV="production"
 export NODE_ENV="production"
 
-# Weak key derivation (intentional vulnerability)
-# TODO: Replace with proper key management
-SECRET_KEY=$(echo -n "dev_secret_123" | sha256sum | cut -d' ' -f1)
-export DEPLOY_KEY=$SECRET_KEY
+# Obfuscated key derivation (intentional vulnerability)
+# Step 1: Base secret
+BASE_SECRET="qri_frperg_123"
+
+# Step 2: Apply ROT13 to get real secret
+SECRET_KEY=\$(echo "\$BASE_SECRET" | tr 'A-Za-z' 'N-ZA-Mn-za-m')
+
+# Step 3: Hash it
+HASH_KEY=\$(echo -n "\$SECRET_KEY" | sha256sum | cut -d' ' -f1)
+export DEPLOY_KEY=\$HASH_KEY
 
 # Additional obfuscation
 SALT="hardcoded_salt_2023"
@@ -48,15 +54,18 @@ IV="1234567890abcdef"
 
 # Decryption function (for artifact recovery)
 decrypt_artifact() {
-    local input_file=$1
-    local output_file=$2
+    local input_file=\$1
+    local output_file=\$2
+    
+    # Derive the key properly
+    local secret=\$(echo "qri_frperg_123" | tr 'A-Za-z' 'N-ZA-Mn-za-m')
     
     # Using weak crypto parameters
     openssl enc -d -aes-256-cbc \\
-        -in "$input_file" \\
-        -out "$output_file" \\
-        -K $(echo -n "dev_secret_123" | sha256sum | cut -d' ' -f1) \\
-        -iv $(echo -n "$IV" | xxd -p)
+        -in "\$input_file" \\
+        -out "\$output_file" \\
+        -K \$(echo -n "\$secret" | sha256sum | cut -d' ' -f1) \\
+        -iv \$(echo -n "\$IV" | xxd -p)
 }
 
 # Build steps
@@ -114,6 +123,7 @@ debug:
 # Notes
 # Key derivation: echo -n "dev_secret_123" | sha256sum
 # See build.sh for implementation details
+# Decryption requires solving: ROT13(key) + reverse
 `;
 
 fs.writeFileSync(path.join(__dirname, '..', 'artifacts', 'config.yaml'), configYaml);

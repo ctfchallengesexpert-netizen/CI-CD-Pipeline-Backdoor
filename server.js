@@ -71,12 +71,17 @@ app.get('/api/build/logs', (req, res) => {
       timestamp: '2026-04-16T14:12:33Z',
       logs: 'Build completed successfully\nTests passed: 138/142\nDeployment: production'
     },
-    '1337': {
-      buildId: '1337',
-      status: 'failed',
-      timestamp: '2026-04-10T03:47:21Z',
-      logs: 'Build failed\nError in deployment script\nArtifact backup created',
-      artifact: fs.readFileSync(path.join(__dirname, 'artifacts', 'encoded-image.txt'), 'utf8')
+    '1003': {
+      buildId: '1003',
+      status: 'success',
+      timestamp: '2026-04-17T09:15:22Z',
+      logs: 'Build completed successfully\nTests passed: 145/145\nDeployment: staging'
+    },
+    '1004': {
+      buildId: '1004',
+      status: 'success',
+      timestamp: '2026-04-18T16:42:11Z',
+      logs: 'Build completed successfully\nTests passed: 140/145\nDeployment: production'
     }
   };
   
@@ -85,6 +90,50 @@ app.get('/api/build/logs', (req, res) => {
     res.json(log);
   } else {
     res.status(404).json({ error: 'Build not found' });
+  }
+});
+
+// Hidden endpoint - requires specific header
+app.get('/api/internal/artifacts', (req, res) => {
+  const authToken = req.headers['x-internal-token'];
+  
+  // Weak check - token is base64 encoded "internal:access"
+  if (authToken === Buffer.from('internal:access').toString('base64')) {
+    res.json({
+      builds: ['1001', '1002', '1003', '1004', '1337'],
+      note: 'Build 1337 has artifacts'
+    });
+  } else {
+    res.status(403).json({ error: 'Forbidden' });
+  }
+});
+
+// Artifact endpoint - requires solving a challenge
+app.get('/api/artifacts/:buildId', (req, res) => {
+  const buildId = req.params.buildId;
+  const challenge = req.query.challenge;
+  
+  // Must solve: SHA256(buildId + "secret") first 8 chars
+  const crypto = require('crypto');
+  const expected = crypto.createHash('sha256').update(buildId + 'secret').digest('hex').slice(0, 8);
+  
+  if (challenge !== expected) {
+    return res.status(401).json({ 
+      error: 'Challenge required',
+      hint: 'SHA256(buildId + "secret") first 8 chars'
+    });
+  }
+  
+  if (buildId === '1337') {
+    res.json({
+      buildId: '1337',
+      status: 'failed',
+      timestamp: '2026-04-10T03:47:21Z',
+      logs: 'Build failed\nError in deployment script\nArtifact backup created',
+      artifact: fs.readFileSync(path.join(__dirname, 'artifacts', 'encoded-image.txt'), 'utf8')
+    });
+  } else {
+    res.status(404).json({ error: 'No artifacts for this build' });
   }
 });
 

@@ -108,89 +108,227 @@ app.get('/api/build/logs', (req, res) => {
   }
 });
 
-// Puzzle endpoint - must solve math puzzle to get hint
+// Puzzle endpoint - must solve MULTIPLE challenges
 app.get('/api/puzzle', (req, res) => {
   const answer = req.query.answer;
   const session = sessions.get(req.sessionId);
   
-  if (!session.puzzle) {
-    // Generate random math puzzle
-    const a = Math.floor(Math.random() * 50) + 10;
-    const b = Math.floor(Math.random() * 50) + 10;
-    const c = Math.floor(Math.random() * 20) + 5;
-    session.puzzle = {
-      question: `(${a} * ${b}) + ${c}`,
-      answer: (a * b) + c
-    };
+  if (!session.puzzleStage) {
+    session.puzzleStage = 1;
+    session.puzzleAttempts = 0;
   }
   
-  if (answer) {
-    if (parseInt(answer) === session.puzzle.answer) {
-      delete session.puzzle;
-      return res.json({
-        success: true,
-        hint: 'Build IDs are not always sequential. Try numbers with special meaning in hacker culture.',
-        next_step: 'Use /api/artifacts/:buildId with proper authentication'
-      });
-    } else {
-      return res.json({
-        success: false,
-        message: 'Wrong answer. Try again.'
-      });
+  // Stage 1: Math puzzle
+  if (session.puzzleStage === 1) {
+    if (!session.puzzle1) {
+      const a = Math.floor(Math.random() * 50) + 10;
+      const b = Math.floor(Math.random() * 50) + 10;
+      const c = Math.floor(Math.random() * 20) + 5;
+      session.puzzle1 = {
+        question: `(${a} * ${b}) + ${c}`,
+        answer: (a * b) + c
+      };
     }
-  }
-  
-  res.json({
-    puzzle: session.puzzle.question,
-    instruction: 'Solve this to get a hint. Send answer as ?answer=YOUR_ANSWER'
-  });
-});
-
-// Artifact endpoint - requires multiple steps
-app.get('/api/artifacts/:buildId', (req, res) => {
-  const buildId = req.params.buildId;
-  const token = req.query.token;
-  const session = sessions.get(req.sessionId);
-  
-  // Step 1: Must have solved puzzle first
-  if (!session.puzzleSolved && !session.puzzle) {
-    return res.status(403).json({
-      error: 'Access denied',
-      hint: 'Visit /api/puzzle first'
+    
+    if (answer) {
+      session.puzzleAttempts++;
+      if (parseInt(answer) === session.puzzle1.answer) {
+        session.puzzleStage = 2;
+        delete session.puzzle1;
+        return res.json({
+          success: true,
+          message: 'Stage 1 complete! Moving to Stage 2...',
+          next: 'Call /api/puzzle again'
+        });
+      } else {
+        if (session.puzzleAttempts >= 3) {
+          delete session.puzzle1;
+          delete session.puzzleStage;
+          session.puzzleAttempts = 0;
+          return res.json({
+            success: false,
+            message: 'Too many wrong attempts. Puzzle reset. Start over.'
+          });
+        }
+        return res.json({
+          success: false,
+          message: `Wrong answer. ${3 - session.puzzleAttempts} attempts remaining.`
+        });
+      }
+    }
+    
+    return res.json({
+      stage: 1,
+      puzzle: session.puzzle1.question,
+      instruction: 'Solve this math problem. Send answer as ?answer=YOUR_ANSWER'
     });
   }
   
-  // Step 2: Generate time-based token
+  // Stage 2: Binary to decimal conversion
+  if (session.puzzleStage === 2) {
+    if (!session.puzzle2) {
+      const decimal = Math.floor(Math.random() * 200) + 50;
+      session.puzzle2 = {
+        question: decimal.toString(2),
+        answer: decimal
+      };
+    }
+    
+    if (answer) {
+      if (parseInt(answer) === session.puzzle2.answer) {
+        session.puzzleStage = 3;
+        delete session.puzzle2;
+        return res.json({
+          success: true,
+          message: 'Stage 2 complete! Moving to Stage 3...',
+          next: 'Call /api/puzzle again'
+        });
+      } else {
+        return res.json({
+          success: false,
+          message: 'Wrong answer. Try again.'
+        });
+      }
+    }
+    
+    return res.json({
+      stage: 2,
+      puzzle: session.puzzle2.question,
+      instruction: 'Convert this binary number to decimal. Send answer as ?answer=YOUR_ANSWER'
+    });
+  }
+  
+  // Stage 3: Hex to ASCII
+  if (session.puzzleStage === 3) {
+    if (!session.puzzle3) {
+      const words = ['BUILD', 'DEPLOY', 'PIPELINE', 'ARTIFACT', 'SECRET'];
+      const word = words[Math.floor(Math.random() * words.length)];
+      session.puzzle3 = {
+        question: Buffer.from(word).toString('hex'),
+        answer: word
+      };
+    }
+    
+    if (answer) {
+      if (answer.toUpperCase() === session.puzzle3.answer) {
+        session.puzzleSolved = true;
+        session.puzzleStage = 4;
+        delete session.puzzle3;
+        return res.json({
+          success: true,
+          message: 'All puzzles solved!',
+          hint: 'Build IDs are not always sequential. Try numbers with special meaning in hacker culture (leet speak).',
+          secret_endpoint: '/api/artifacts/:buildId',
+          warning: 'You will need a time-based token to access artifacts.'
+        });
+      } else {
+        return res.json({
+          success: false,
+          message: 'Wrong answer. Try again.'
+        });
+      }
+    }
+    
+    return res.json({
+      stage: 3,
+      puzzle: session.puzzle3.question,
+      instruction: 'Convert this hex to ASCII text. Send answer as ?answer=YOUR_ANSWER'
+    });
+  }
+  
+  res.json({
+    message: 'All puzzles already solved!',
+    hint: 'Proceed to /api/artifacts/:buildId'
+  });
+});
+
+// Artifact endpoint - requires multiple authentication layers
+app.get('/api/artifacts/:buildId', (req, res) => {
+  const buildId = req.params.buildId;
+  const token = req.query.token;
+  const proof = req.query.proof;
+  const session = sessions.get(req.sessionId);
+  
+  // Step 1: Must have solved ALL puzzles
+  if (!session.puzzleSolved) {
+    return res.status(403).json({
+      error: 'Access denied',
+      hint: 'Complete all puzzle stages at /api/puzzle first'
+    });
+  }
+  
+  // Step 2: Proof of work - must find number where SHA256(buildId + number) starts with "00"
+  if (!proof) {
+    return res.status(401).json({
+      error: 'Proof of work required',
+      challenge: 'Find a number N where SHA256(buildId + N) starts with "00"',
+      hint: 'Try numbers from 0 to 100000',
+      submit: 'Send as ?proof=YOUR_NUMBER&token=YOUR_TOKEN'
+    });
+  }
+  
   const crypto = require('crypto');
-  const timestamp = Math.floor(Date.now() / 60000); // Changes every minute
-  const expectedToken = crypto.createHash('md5')
-    .update(buildId + timestamp.toString() + 'secret_salt')
+  const hash = crypto.createHash('sha256').update(buildId + proof).digest('hex');
+  if (!hash.startsWith('00')) {
+    return res.status(401).json({
+      error: 'Invalid proof of work',
+      your_hash: hash,
+      hint: 'Hash must start with "00"'
+    });
+  }
+  
+  // Step 3: Time-based token (changes every 30 seconds)
+  const timestamp = Math.floor(Date.now() / 30000); // Changes every 30 seconds
+  const expectedToken = crypto.createHash('sha256')
+    .update(buildId + timestamp.toString() + proof + 'ultra_secret_salt_2026')
     .digest('hex')
-    .slice(0, 16);
+    .slice(0, 20);
   
   if (!token) {
     return res.status(401).json({
       error: 'Token required',
-      hint: 'Generate token: MD5(buildId + current_minute_timestamp + "secret_salt") first 16 chars',
-      example: 'Current timestamp (minutes since epoch): ' + timestamp
+      hint: 'Generate token: SHA256(buildId + timestamp_30s + proof + "ultra_secret_salt_2026") first 20 chars',
+      note: 'Timestamp = Math.floor(Date.now() / 30000)',
+      current_timestamp: timestamp
     });
   }
   
   if (token !== expectedToken) {
     return res.status(401).json({
-      error: 'Invalid token',
-      hint: 'Token changes every minute. Make sure your timestamp is correct.'
+      error: 'Invalid or expired token',
+      hint: 'Token changes every 30 seconds. Recalculate with current timestamp.',
+      your_token: token,
+      current_timestamp: timestamp
     });
   }
   
-  // Step 3: Return artifact only for build 1337
+  // Step 4: Rate limit check
+  if (!session.artifactAccess) {
+    session.artifactAccess = [];
+  }
+  
+  const now = Date.now();
+  session.artifactAccess = session.artifactAccess.filter(time => now - time < 60000);
+  
+  if (session.artifactAccess.length >= 3) {
+    return res.status(429).json({
+      error: 'Rate limit exceeded',
+      message: 'Maximum 3 artifact requests per minute',
+      retry_after: 60
+    });
+  }
+  
+  session.artifactAccess.push(now);
+  
+  // Step 5: Return artifact only for build 1337
   if (buildId === '1337') {
     res.json({
       buildId: '1337',
       status: 'failed',
       timestamp: '2026-04-10T03:47:21Z',
       logs: 'Build failed\nError in deployment script\nArtifact backup created',
-      artifact: fs.readFileSync(path.join(__dirname, 'artifacts', 'encoded-image.txt'), 'utf8')
+      artifact: fs.readFileSync(path.join(__dirname, 'artifacts', 'encoded-image.txt'), 'utf8'),
+      congratulations: 'You have successfully accessed the artifact! Now decode it...'
     });
   } else {
     res.status(404).json({ error: 'No artifacts for this build' });

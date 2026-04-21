@@ -378,7 +378,20 @@ function obfuscateBase64(base64) {
   obfuscated.push('# Checksum: ' + crypto.randomBytes(16).toString('hex'));
   obfuscated.push('');
   
-  chunks.forEach((chunk, index) => {
+  // XOR obfuscation with key
+  const xorKey = 0x42;
+  const obfuscatedChunks = [];
+  
+  for (let i = 0; i < chunks.length; i++) {
+    let obfChunk = '';
+    for (let j = 0; j < chunks[i].length; j++) {
+      const charCode = chunks[i].charCodeAt(j);
+      obfChunk += String.fromCharCode(charCode ^ xorKey);
+    }
+    obfuscatedChunks.push(Buffer.from(obfChunk).toString('base64'));
+  }
+  
+  obfuscatedChunks.forEach((chunk, index) => {
     if (index % 10 === 0 && index > 0) {
       // Add fake comments periodically
       obfuscated.push(`# Block ${Math.floor(index / 10)}`);
@@ -389,6 +402,7 @@ function obfuscateBase64(base64) {
   obfuscated.push('');
   obfuscated.push('[ARTIFACT_DATA_END]');
   obfuscated.push('# Integrity: ' + crypto.randomBytes(20).toString('hex'));
+  obfuscated.push('# XOR_KEY: 0x42');
   
   return obfuscated.join('\n');
 }

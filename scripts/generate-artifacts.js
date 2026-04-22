@@ -116,9 +116,9 @@ monitoring:
   enabled: true
   endpoint: https://monitor.example.com
   
-# Fake flag to mislead
+# Fake data to mislead
 debug:
-  flag: "flag{wrong_path_try_harder}"
+  message: "Debug mode disabled in production"
   
 # Notes
 # Key derivation: echo -n "dev_secret_123" | sha256sum
@@ -161,7 +161,7 @@ fs.writeFileSync(path.join(__dirname, '..', 'artifacts', 'encoded-image.txt'), o
   console.log('5. Reverse engineer weak crypto');
   console.log('6. Decrypt payload to get PCAP');
   console.log('7. Analyze network traffic for flag');
-  console.log('\n🏁 Flag: flag{ci_cd_pipeline_backdoor_exposed}\n');
+  console.log('\n🏁 Challenge complete!\n');
 }
 
 // Helper functions

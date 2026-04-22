@@ -361,7 +361,7 @@ app.get('/api/config', (req, res) => {
     version: '2.1.4',
     environment: 'production',
     features: ['auto-deploy', 'rollback', 'monitoring'],
-    flag: 'flag{this_is_a_decoy_flag_keep_looking}'
+    message: 'Configuration loaded successfully'
   });
 });
 

@@ -182,10 +182,10 @@ function createPcapFile() {
   
   // Create DNS query packets with exfiltrated data
   const flagParts = [
-    'flag{ci_cd_',
-    'pipeline_',
-    'backdoor_',
-    'exposed}'
+    'flag{h4ck3r_',
+    'f0und_th3_',
+    's3cr3t_',
+    'p4yl04d}'
   ];
   
   const domains = [

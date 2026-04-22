@@ -335,25 +335,7 @@ app.get('/api/artifacts/:buildId', (req, res) => {
   }
 });
 
-// Alternative hidden endpoint
-app.get('/debug/export', (req, res) => {
-  // Another way to get the artifact
-  const token = req.headers['authorization'];
-  
-  // Weak token check (can be bypassed)
-  if (!token || !token.includes('dev')) {
-    // Still returns data with a "warning"
-    res.json({
-      warning: 'Unauthorized access logged',
-      data: fs.readFileSync(path.join(__dirname, 'artifacts', 'encoded-image.txt'), 'utf8'),
-      note: 'This endpoint is deprecated and will be removed'
-    });
-  } else {
-    res.json({
-      data: fs.readFileSync(path.join(__dirname, 'artifacts', 'encoded-image.txt'), 'utf8')
-    });
-  }
-});
+// Alternative hidden endpoint - REMOVED FOR SECURITY
 
 // Time-based hint system
 app.get('/api/hints', (req, res) => {

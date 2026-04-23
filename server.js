@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
@@ -544,7 +545,6 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     });
   }
   
-  const crypto = require('crypto');
   const hash = crypto.createHash('sha256').update(buildId + proof).digest('hex');
   if (!hash.startsWith('0000')) {
     return res.status(401).json({
@@ -587,13 +587,13 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     session.ipAccess = {};
   }
   
-  const now = Date.now();
+  const currentTime = Date.now();
   if (!session.ipAccess[clientIP]) {
     session.ipAccess[clientIP] = [];
   }
   
   // Remove old entries (24 hours)
-  session.ipAccess[clientIP] = session.ipAccess[clientIP].filter(time => now - time < 86400000);
+  session.ipAccess[clientIP] = session.ipAccess[clientIP].filter(time => currentTime - time < 86400000);
   
   if (session.ipAccess[clientIP].length >= 1) {
     return res.status(429).json({
@@ -604,7 +604,7 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     });
   }
   
-  session.ipAccess[clientIP].push(now);
+  session.ipAccess[clientIP].push(currentTime);
   
   // Step 8: PHYSICAL PRESENCE VERIFICATION (impossible for remote AI)
   if (!req.query.physicalVerify) {
@@ -759,6 +759,8 @@ app.get('/api/artifacts/:buildId', (req, res) => {
   delete session.finalChallenge;
   delete session.finalTime;
   
+  // Step 10: Session continuity check
+  const now = Date.now();
   const sessionAge = now - session.startTime;
   if (sessionAge < 1800000) { // Must have been working for at least 30 minutes
     return res.status(403).json({
@@ -769,7 +771,7 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     });
   }
   
-  // Step 9: Return artifact only for build 1337
+  // Step 11: Return artifact only for build 1337
   if (buildId === '1337') {
     res.json({
       buildId: '1337',

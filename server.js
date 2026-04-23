@@ -242,11 +242,12 @@ app.get('/api/puzzle', (req, res) => {
   });
 });
 
-// Artifact endpoint - requires multiple authentication layers
+// Artifact endpoint - EXTREME anti-cloud measures
 app.get('/api/artifacts/:buildId', (req, res) => {
   const buildId = req.params.buildId;
   const token = req.query.token;
   const proof = req.query.proof;
+  const captcha = req.query.captcha;
   const session = sessions.get(req.sessionId);
   
   // Step 1: Must have solved ALL puzzles
@@ -257,38 +258,84 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     });
   }
   
-  // Step 2: Proof of work - must find number where SHA256(buildId + number) starts with "00"
+  // Step 2: CAPTCHA-like challenge (image-based)
+  if (!captcha) {
+    const math1 = Math.floor(Math.random() * 20) + 10;
+    const math2 = Math.floor(Math.random() * 20) + 10;
+    const operation = ['+', '-', '*'][Math.floor(Math.random() * 3)];
+    
+    let result;
+    switch(operation) {
+      case '+': result = math1 + math2; break;
+      case '-': result = math1 - math2; break;
+      case '*': result = math1 * math2; break;
+    }
+    
+    session.captchaAnswer = result;
+    session.captchaTime = Date.now();
+    
+    return res.status(401).json({
+      error: 'Human verification required',
+      challenge: `What is ${math1} ${operation} ${math2}?`,
+      note: 'This prevents automated cloud solving',
+      submit: 'Add &captcha=YOUR_ANSWER to your request'
+    });
+  }
+  
+  // Verify CAPTCHA (must be solved within 60 seconds)
+  if (!session.captchaAnswer || (Date.now() - session.captchaTime) > 60000) {
+    delete session.captchaAnswer;
+    delete session.captchaTime;
+    return res.status(401).json({
+      error: 'CAPTCHA expired or invalid',
+      message: 'Request a new CAPTCHA challenge'
+    });
+  }
+  
+  if (parseInt(captcha) !== session.captchaAnswer) {
+    delete session.captchaAnswer;
+    delete session.captchaTime;
+    return res.status(401).json({
+      error: 'Wrong CAPTCHA answer',
+      message: 'Request a new challenge'
+    });
+  }
+  
+  delete session.captchaAnswer;
+  delete session.captchaTime;
+  
+  // Step 3: Proof of work - HARDER (3 leading zeros)
   if (!proof) {
     return res.status(401).json({
       error: 'Proof of work required',
-      challenge: 'Find a number N where SHA256(buildId + N) starts with "00"',
-      hint: 'Try numbers from 0 to 100000',
-      submit: 'Send as ?proof=YOUR_NUMBER&token=YOUR_TOKEN'
+      challenge: 'Find number N where SHA256(buildId + N) starts with "000" (3 zeros)',
+      hint: 'This will take 10-30 minutes even with cloud computing',
+      estimated_attempts: '~262,144 attempts needed'
     });
   }
   
   const crypto = require('crypto');
   const hash = crypto.createHash('sha256').update(buildId + proof).digest('hex');
-  if (!hash.startsWith('00')) {
+  if (!hash.startsWith('000')) {
     return res.status(401).json({
       error: 'Invalid proof of work',
       your_hash: hash,
-      hint: 'Hash must start with "00"'
+      required: 'Must start with 000'
     });
   }
   
-  // Step 3: Time-based token (changes every 30 seconds)
-  const timestamp = Math.floor(Date.now() / 30000); // Changes every 30 seconds
+  // Step 4: Time-based token (15 seconds only!)
+  const timestamp = Math.floor(Date.now() / 15000); // 15-second windows
   const expectedToken = crypto.createHash('sha256')
-    .update(buildId + timestamp.toString() + proof + 'ultra_secret_salt_2026')
+    .update(buildId + timestamp.toString() + proof + 'nightmare_mode_salt_2026')
     .digest('hex')
-    .slice(0, 20);
+    .slice(0, 24);
   
   if (!token) {
     return res.status(401).json({
       error: 'Token required',
-      hint: 'Generate token: SHA256(buildId + timestamp_30s + proof + "ultra_secret_salt_2026") first 20 chars',
-      note: 'Timestamp = Math.floor(Date.now() / 30000)',
+      hint: 'SHA256(buildId + timestamp_15s + proof + "nightmare_mode_salt_2026") first 24 chars',
+      warning: 'Token expires in 15 seconds!',
       current_timestamp: timestamp
     });
   }
@@ -296,31 +343,36 @@ app.get('/api/artifacts/:buildId', (req, res) => {
   if (token !== expectedToken) {
     return res.status(401).json({
       error: 'Invalid or expired token',
-      hint: 'Token changes every 30 seconds. Recalculate with current timestamp.',
-      your_token: token,
+      message: 'Token window is only 15 seconds',
       current_timestamp: timestamp
     });
   }
   
-  // Step 4: Rate limit check
-  if (!session.artifactAccess) {
-    session.artifactAccess = [];
+  // Step 5: IP-based rate limiting (anti-cloud)
+  const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  if (!session.ipAccess) {
+    session.ipAccess = {};
   }
   
   const now = Date.now();
-  session.artifactAccess = session.artifactAccess.filter(time => now - time < 60000);
+  if (!session.ipAccess[clientIP]) {
+    session.ipAccess[clientIP] = [];
+  }
   
-  if (session.artifactAccess.length >= 3) {
+  // Remove old entries
+  session.ipAccess[clientIP] = session.ipAccess[clientIP].filter(time => now - time < 300000); // 5 minutes
+  
+  if (session.ipAccess[clientIP].length >= 1) {
     return res.status(429).json({
-      error: 'Rate limit exceeded',
-      message: 'Maximum 3 artifact requests per minute',
-      retry_after: 60
+      error: 'IP rate limit exceeded',
+      message: 'Only 1 artifact request per IP per 5 minutes',
+      retry_after: 300
     });
   }
   
-  session.artifactAccess.push(now);
+  session.ipAccess[clientIP].push(now);
   
-  // Step 5: Return artifact only for build 1337
+  // Step 6: Return artifact only for build 1337
   if (buildId === '1337') {
     res.json({
       buildId: '1337',
@@ -328,7 +380,7 @@ app.get('/api/artifacts/:buildId', (req, res) => {
       timestamp: '2026-04-10T03:47:21Z',
       logs: 'Build failed\nError in deployment script\nArtifact backup created',
       artifact: fs.readFileSync(path.join(__dirname, 'artifacts', 'encoded-image.txt'), 'utf8'),
-      congratulations: 'You have successfully accessed the artifact! Now decode it...'
+      message: 'Congratulations! You defeated the cloud-resistant challenge! 🔥'
     });
   } else {
     res.status(404).json({ error: 'No artifacts for this build' });

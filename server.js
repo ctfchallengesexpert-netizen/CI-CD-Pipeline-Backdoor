@@ -343,8 +343,8 @@ app.get('/api/artifacts/:buildId', (req, res) => {
   // Step 3: REAL-TIME HUMAN INTERACTION TEST (impossible for AI to automate)
   if (!memoryChallenge) {
     // Generate a challenge that requires human timing and decision making
-    const currentTime = new Date();
-    const targetMinute = currentTime.getMinutes();
+    const challengeTime = new Date();
+    const targetMinute = challengeTime.getMinutes();
     const targetSecond = Math.floor(Math.random() * 60);
     
     // Create a sequence that must be submitted at a specific time
@@ -352,7 +352,7 @@ app.get('/api/artifacts/:buildId', (req, res) => {
       instruction: "You must submit this challenge at exactly the right moment",
       target_minute: targetMinute,
       target_second: targetSecond,
-      current_time: currentTime.toISOString(),
+      current_time: challengeTime.toISOString(),
       challenge_code: Math.random().toString(36).substring(2, 8).toUpperCase()
     };
     
@@ -363,7 +363,7 @@ app.get('/api/artifacts/:buildId', (req, res) => {
       error: 'Real-time human interaction required',
       instructions: `Wait until the clock shows exactly ${targetMinute.toString().padStart(2, '0')}:${targetSecond.toString().padStart(2, '0')} (MM:SS), then submit immediately`,
       challenge_code: timeChallenge.challenge_code,
-      current_time: currentTime.toISOString(),
+      current_time: challengeTime.toISOString(),
       note: 'This requires human timing and cannot be automated by AI',
       submit: 'Add &memoryChallenge=CHALLENGE_CODE when the time is exactly right',
       warning: 'You have a 2-second window. Too early or too late = failure',
@@ -379,9 +379,9 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     });
   }
   
-  const currentTime = new Date();
-  const currentMinute = currentTime.getMinutes();
-  const currentSecond = currentTime.getSeconds();
+  const verifyTime = new Date();
+  const currentMinute = verifyTime.getMinutes();
+  const currentSecond = verifyTime.getSeconds();
   const targetMinute = session.timeChallenge.target_minute;
   const targetSecond = session.timeChallenge.target_second;
   
@@ -587,13 +587,13 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     session.ipAccess = {};
   }
   
-  const currentTime = Date.now();
+  const ipCheckTime = Date.now();
   if (!session.ipAccess[clientIP]) {
     session.ipAccess[clientIP] = [];
   }
   
   // Remove old entries (24 hours)
-  session.ipAccess[clientIP] = session.ipAccess[clientIP].filter(time => currentTime - time < 86400000);
+  session.ipAccess[clientIP] = session.ipAccess[clientIP].filter(time => ipCheckTime - time < 86400000);
   
   if (session.ipAccess[clientIP].length >= 1) {
     return res.status(429).json({
@@ -604,7 +604,7 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     });
   }
   
-  session.ipAccess[clientIP].push(currentTime);
+  session.ipAccess[clientIP].push(ipCheckTime);
   
   // Step 8: PHYSICAL PRESENCE VERIFICATION (impossible for remote AI)
   if (!req.query.physicalVerify) {

@@ -182,17 +182,17 @@ function createPcapFile() {
   
   // Create DNS query packets with exfiltrated data
   const flagParts = [
-    'flag{m4st3r_',
-    'h4x0r_br0k3_',
-    'th3_s3cur1ty_',
-    'ch41n}'
+    'flag{n1ghtm4r3_',
+    'm0d3_unl0ck3d_',
+    'cl0ud_d3f34t3d_',
+    'h4ck3r_g0d}'
   ];
   
   const domains = [
-    'exfil.example.com',
-    'data.backup-cdn.net',
-    'logs.analytics-srv.io',
-    'metrics.cloud-api.com'
+    'exfil-primary.backup-cdn.net',
+    'data-stream.analytics-srv.io', 
+    'logs-collector.cloud-api.com',
+    'metrics-endpoint.security-hub.org'
   ];
   
   let domainIndex = 0;
@@ -203,27 +203,29 @@ function createPcapFile() {
     domainIndex++;
   });
   
-  // Add noise packets with different domains
+  // Add 50+ noise packets with realistic domains to make analysis harder
   const noiseDomains = [
-    'api.example.com',
-    'cdn.cloudflare.net',
-    'tracking.google-analytics.com',
-    'update.microsoft.com',
-    'assets.github.com',
-    'registry.npmjs.org',
-    'download.docker.com',
-    'releases.ubuntu.com',
-    'security.debian.org',
-    'packages.elastic.co',
-    'repo.mongodb.org',
-    'archive.apache.org',
-    'maven.central.com',
-    'pypi.python.org',
-    'rubygems.org',
-    'crates.io'
+    'api.github.com', 'cdn.cloudflare.net', 'tracking.google-analytics.com',
+    'update.microsoft.com', 'assets.githubusercontent.com', 'registry.npmjs.org',
+    'download.docker.com', 'releases.ubuntu.com', 'security.debian.org',
+    'packages.elastic.co', 'repo.mongodb.org', 'archive.apache.org',
+    'maven.central.com', 'pypi.python.org', 'rubygems.org', 'crates.io',
+    'fonts.googleapis.com', 'ajax.googleapis.com', 'code.jquery.com',
+    'stackpath.bootstrapcdn.com', 'unpkg.com', 'jsdelivr.net',
+    'cdnjs.cloudflare.com', 'maxcdn.bootstrapcdn.com', 'fontawesome.com',
+    'gravatar.com', 'wordpress.org', 'wp.com', 'jetpack.wordpress.com',
+    'stats.wp.com', 'pixel.wp.com', 'public-api.wordpress.com',
+    'ssl.google-analytics.com', 'www.google-analytics.com', 'doubleclick.net',
+    'googlesyndication.com', 'googleadservices.com', 'googletagmanager.com',
+    'facebook.com', 'connect.facebook.net', 'graph.facebook.com',
+    'twitter.com', 'abs.twimg.com', 'pbs.twimg.com', 'platform.twitter.com',
+    'linkedin.com', 'static.licdn.com', 'media.licdn.com',
+    'instagram.com', 'scontent.cdninstagram.com', 'youtube.com',
+    'i.ytimg.com', 's.ytimg.com', 'googlevideo.com'
   ];
   
-  for (let i = 0; i < 16; i++) {
+  // Generate 80 noise packets to hide the real data
+  for (let i = 0; i < 80; i++) {
     const noiseDomain = noiseDomains[i % noiseDomains.length];
     packets.push(createNoisePacket(i, noiseDomain));
   }

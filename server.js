@@ -379,9 +379,9 @@ app.get('/api/artifacts/:buildId', (req, res) => {
     });
   }
   
-  const now = new Date();
-  const currentMinute = now.getMinutes();
-  const currentSecond = now.getSeconds();
+  const currentTime = new Date();
+  const currentMinute = currentTime.getMinutes();
+  const currentSecond = currentTime.getSeconds();
   const targetMinute = session.timeChallenge.target_minute;
   const targetSecond = session.timeChallenge.target_second;
   
